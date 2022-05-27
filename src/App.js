@@ -8,66 +8,112 @@ import Modal from "./components/Modal";
 import { RotatingLines } from "react-loader-spinner";
 
 function App() {
-    const [data, setData] = useState(null);
-    const [cart, setCart] = useState([]);
-    const [amount, setAmount] = useState(0);
-    const [showModal, setShowModal] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    useEffect(() => {
-        fetchData();
-    }, []);
-    const fetchData = async () => {
-        setIsLoading(true);
-        const res = await fetch(
-            "https://625a91bf0ab4013f94a2d9a8.mockapi.io/meals"
-        );
-        const res_json = await res.json();
-        setData(res_json);
-        setIsLoading(false);
-    };
-    const handleAddToCart = (item) => {
-        console.log(item);
-        const found = cart.some((el) => el.id === item.id);
-        if (!found) {
-            setCart([...cart, item]);
-        } else {
-            const tmp_item = cart.filter((el) => el.id === item.id);
-            console.log("tmp_item", tmp_item);
-            const tmp_cart = cart.filter((el) => el.id !== item.id);
-            console.log("tmp_cart", tmp_cart);
-            console.log("item", item.amount);
-            tmp_item[0].amount =
-                Number(tmp_item[0].amount) + Number(item.amount);
-            console.log("after change", tmp_item);
-            setCart([...tmp_cart, ...tmp_item]);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [amount, setAmount] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState({});
+  useEffect(() => {
+    fetchData();
+  }, []);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(false);
+      const res = await fetch(
+        "https://625a91bf0ab4013f94a2d9a8.mockapi.io/meals"
+      );
+      const res_json = await res.json();
+      setData(res_json);
+      setIsLoading(false);
+    } catch (err) {
+      setError(true);
+      setIsLoading(false);
+    }
+  };
+  const handleAddToCart = (item) => {
+    console.log(item);
+    const found = cart.some((el) => el.id === item.id);
+    if (!found) {
+      setCart([...cart, item]);
+    } else {
+      const tmp_item = cart.filter((el) => el.id === item.id);
+      const tmp_cart = cart.filter((el) => el.id !== item.id);
+      tmp_item[0].amount = Number(tmp_item[0].amount) + Number(item.amount);
+      setCart([...tmp_cart, ...tmp_item]);
+    }
+    setAmount(Number(amount) + Number(item.amount));
+  };
+  console.log(cart);
+
+  const handleIncreaseAmount = (id) => {
+    cart.forEach((el) => {
+      if (el.id === id) {
+        el.amount = Number(el.amount) + 1;
+        setAmount(Number(amount) + 1);
+        setCart([...cart]);
+        return;
+      }
+    });
+  };
+
+  const handleDecreaseAmount = (id) => {
+    cart.forEach((el) => {
+      if (el.id === id) {
+        el.amount = Number(el.amount) - 1;
+        setAmount(Number(amount) - 1);
+        if (Number(el.amount) === 0) {
+          setCart(cart.filter((el) => el.id !== id));
+          return;
         }
-        setAmount(Number(amount) + Number(item.amount));
-    };
-    console.log(showModal);
-    return (
-        <>
-            <Header amount={amount} setShowModal={setShowModal} />
-            <div className="App">
-                {isLoading && (
-                    <RotatingLines width="100" strokeColor="#FF5733" />
-                )}
-                {!isLoading &&
-                    data &&
-                    data.map((d) => (
-                        <>
-                            <FoodCart
-                                key={d.id}
-                                item={d}
-                                handleAddToCart={handleAddToCart}
-                            />
-                            <hr />
-                        </>
-                    ))}
-            </div>
-            {showModal && <Modal setShowModal={setShowModal} cart={cart} />}
-            <ToastContainer />
-        </>
-    );
+        setCart([...cart]);
+        return;
+      }
+    });
+  };
+
+  useEffect(() => {
+    let tmp = 0;
+    cart.forEach((el) => {
+      tmp += el.amount * el.price;
+    });
+    setTotal(Math.round(tmp * 100) / 100);
+  }, [cart]);
+  console.log(total);
+
+  return (
+    <>
+      <Header amount={amount} setShowModal={setShowModal} />
+      <div className="App">
+        {isLoading && <RotatingLines width="100" strokeColor="gray" />}
+        {error && <div>Something went wrong with the data :( </div>}
+        {!error &&
+          !isLoading &&
+          data &&
+          data.map((d) => (
+            <>
+              <FoodCart key={d.id} item={d} handleAddToCart={handleAddToCart} />
+              <hr />
+            </>
+          ))}
+      </div>
+      {showModal && (
+        <Modal
+          setShowModal={setShowModal}
+          cart={cart}
+          handleIncreaseAmount={handleIncreaseAmount}
+          handleDecreaseAmount={handleDecreaseAmount}
+          total={total}
+          setCart={setCart}
+          setAmount={setAmount}
+        />
+      )}
+      <ToastContainer />
+    </>
+  );
 }
 
 export default App;
